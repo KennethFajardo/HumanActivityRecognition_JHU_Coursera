@@ -1,0 +1,124 @@
+---
+title: "Applied Machine Learning on the Human Activity Recognition Dataset"
+author: "KennethFajardo"
+date: "06/01/2021"
+output: github_document
+bibliography: references.bib
+csl: apa.csl
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Overview
+A study conducted by @wear on predicting the manner by which a participant performs bicep curls, based from the recordings found using experimental wearable devices. The exercise is performed separately while (A) **sitting**, (B) **sitting down**, (C) **standing**, (D) **standing up**, or (E) **walking**. The activities are denoted by the variable ```classe```, which is a factor ranging from A to E. The goal of this project is to use machine learning and find the best ML model/s that would help predict ```classe```.
+
+# Getting and Cleaning Data
+## Initialization
+Load the needed packages.
+```{r libs, message=FALSE}
+library(caret) # main package (comes with ggplot2 and lattice)
+library(rattle) # for visualizing decision trees
+library(corrplot) # for predictor selection
+```
+
+Download and read the data.
+```{r dl, eval=FALSE}
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", "training.csv")
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", "testing.csv")
+```
+
+```{r load}
+training <- read.csv("training.csv")
+testing <- read.csv("testing.csv")
+dim(training)
+```
+
+# Preprocessing the data
+
+After examining the data using the ```View()``` function, we can see that the data has a lot of missing values. Hence, we must first impute the columns with a lot of missing data i.e. columns with total missing values greater than 10% of each respective column.
+```{r rmCols}
+nrows <- nrow(training)
+training <- training[, colSums(is.na(training)) <= 0.1*nrows]
+```
+
+To further clean the training data, we can remove metadata including the time factor since it is not needed for predicting ```classe```, and those with near zero variances.
+```{r nearZero, cache=TRUE}
+# Remove metadata
+training <- training[, -c(1:7)]
+# Remove near zero variances
+nzero <- nearZeroVar(training)
+training <- training[,-nzero]
+dim(training)
+```
+
+We have reduced the number of variables from **160 to 53**, and can now split the clean data into training and validation set.
+```{r split}
+inTrain <- createDataPartition(y=training$classe, p=0.7, list=F)
+training <- training[inTrain,]
+validation <- training[-inTrain,]
+```
+
+# Correlation Analysis
+Examine the correlations to see which predictors may contribute to overfitting. We can see that measurements from the belt, arms and arm extensions are key factors in determining the current activity. Note that measurements from legs and feet were removed due to missing values.
+```{r cor}
+corMat <- cor(training[,-53])
+corrplot(corMat, tl.col = "black", type = "upper", tl.cex = 0.7)
+corr <- findCorrelation(corMat, cutoff=0.6)
+names(training)[corr]
+```
+
+# Model Building
+The methods we will be using for training are Random Forests, State Vector Machines and Gradient Boosting Machines with default parameters. We will be using a 10-fold cross validation for a relatively low bias and neutral variance.
+```{r train, cache=TRUE}
+# Set seed and training control
+set.seed(3123)
+control <- trainControl(method="cv", number=10, verboseIter=F)
+# Actual training
+mod_rf <- train(classe~., method="rf", trControl=control, data=training)
+mod_svm <- train(classe~., method="svmLinear",  trControl=control, data=training, verbose=FALSE)
+mod_gbm <- train(classe~., method="gbm",  trControl=control, data=training, verbose=FALSE)
+```
+
+# Prediction
+We, then, predict ```classe``` in both the validation (in-sample) and testing (out-of-sample) sets.
+```{r predict}
+pred_rf <- predict(mod_rf, validation)
+pred_svm <- predict(mod_svm, validation)
+pred_gbm <- predict(mod_gbm, validation)
+```
+
+# Error Rates
+Create a confusion matrix for the predictions to observe their accuracy.
+```{r cMatrix}
+cm_rf<- confusionMatrix(pred_rf, factor(validation$classe))
+cm_svm <- confusionMatrix(pred_svm, factor(validation$classe))
+cm_gbm <- confusionMatrix(pred_gbm, factor(validation$classe))
+```
+
+Summarize the accuracy and out-of-sample errors.
+```{r summary}
+acc <- rbind(cm_rf$overall['Accuracy'], cm_svm$overall['Accuracy'], cm_gbm$overall['Accuracy'])
+oos <- rbind(1-cm_rf$overall['Accuracy'], 1-cm_svm$overall['Accuracy'],
+             1-cm_gbm$overall['Accuracy'])
+colnames(oos) <- "Out-of-sample Error"
+cbind(acc,oos)
+```
+
+We can see that random forests almost has an accuracy of 1, which may be due to overfitting. GBM yielded a close accuracy of 0.95, and the SVM produced an accuracy of 0.78. For prediction on the test data, we use the most accurate fit, which is the random forests.
+
+# Prediction
+First, intersect the columns of the training and test sets.
+```{r intersect}
+cnames <- colnames(training)
+testNew <- testing[, cnames[-53]]
+```
+
+Finally, use the random forests model on predicting ```classe``` on the test set.
+```{r predict_test}
+pred_rf_test <- predict(mod_rf, testNew)
+pred_rf_test
+```
+
+## References
