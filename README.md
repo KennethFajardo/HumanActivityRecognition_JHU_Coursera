@@ -97,12 +97,12 @@ names(training)[corr]
 ```
 
     ##  [1] "accel_belt_z"         "roll_belt"            "accel_belt_y"        
-    ##  [4] "accel_arm_y"          "total_accel_belt"     "yaw_belt"            
+    ##  [4] "total_accel_belt"     "accel_arm_y"          "yaw_belt"            
     ##  [7] "accel_dumbbell_z"     "accel_belt_x"         "pitch_belt"          
-    ## [10] "magnet_belt_x"        "accel_dumbbell_y"     "magnet_dumbbell_x"   
+    ## [10] "magnet_belt_x"        "magnet_dumbbell_x"    "accel_dumbbell_y"    
     ## [13] "magnet_dumbbell_y"    "total_accel_dumbbell" "accel_forearm_x"     
     ## [16] "accel_dumbbell_x"     "accel_arm_x"          "magnet_dumbbell_z"   
-    ## [19] "accel_arm_z"          "magnet_arm_y"         "magnet_belt_y"       
+    ## [19] "accel_arm_z"          "magnet_arm_y"         "magnet_belt_z"       
     ## [22] "accel_forearm_y"      "gyros_dumbbell_y"     "gyros_forearm_z"     
     ## [25] "gyros_dumbbell_x"     "gyros_dumbbell_z"     "gyros_arm_x"
 
@@ -155,16 +155,16 @@ cbind(acc,oos)
 ```
 
     ##       Accuracy Out-of-sample Error
-    ## [1,] 0.9983010         0.001699029
-    ## [2,] 0.7978155         0.202184466
-    ## [3,] 0.9682039         0.031796117
+    ## [1,] 0.9985416         0.001458435
+    ## [2,] 0.7812348         0.218765192
+    ## [3,] 0.9684006         0.031599417
 
 We can see that random forests almost has an accuracy of 1, which may be
 due to overfitting. GBM yielded a close accuracy of 0.95, and the SVM
 produced an accuracy of 0.78. For prediction on the test data, we use
 the most accurate fit, which is the random forests.
 
-# Prediction
+# Prediction on Test Set
 
 First, intersect the columns of the training and test sets.
 
